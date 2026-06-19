@@ -66,9 +66,9 @@ services:
       - "8501:8501"
     environment:
       - API_URL=http://api:8000
-      - API_PUBLIC_URL=http://localhost:8000
-      - MLFLOW_URL=http://localhost:5001
-      - AIRFLOW_URL=http://localhost:8080
+      - API_PUBLIC_URL=http://141.253.114.30:8000
+      - MLFLOW_URL=http://141.253.114.30:5001
+      - AIRFLOW_URL=http://141.253.114.30:8080
     restart: unless-stopped
 
 volumes:
