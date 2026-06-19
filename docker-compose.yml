@@ -1,0 +1,75 @@
+services:
+
+  # ── Airflow ─────────────────────────────────────────────────────────────────
+  airflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.airflow
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'True'
+      PYTHONPATH: /opt/airflow/project/src:/opt/airflow/project/src/scripts
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      API_URL: http://api:8000
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs/airflow:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - .:/opt/airflow/project
+      - airflow_db:/opt/airflow
+    ports:
+      - "8080:8080"
+    command: >
+      bash -c "airflow db upgrade &&
+               airflow users create --username admin --password admin
+                 --firstname Admin --lastname User
+                 --role Admin --email admin@example.com || true &&
+               airflow scheduler &
+               airflow webserver"
+    restart: unless-stopped
+
+  # ── MLflow ──────────────────────────────────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.13.0
+    ports:
+      - "5001:5000"
+    command: mlflow server --host 0.0.0.0 --port 5000 --default-artifact-root /mlflow/mlruns
+    restart: unless-stopped
+
+  # ── API FastAPI ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+    restart: unless-stopped
+
+  # ── Frontend Streamlit ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    depends_on:
+      - api
+      - mlflow
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8000
+      - API_PUBLIC_URL=http://localhost:8000
+      - MLFLOW_URL=http://localhost:5001
+      - AIRFLOW_URL=http://localhost:8080
+    restart: unless-stopped
+
+volumes:
+  airflow_db: {}

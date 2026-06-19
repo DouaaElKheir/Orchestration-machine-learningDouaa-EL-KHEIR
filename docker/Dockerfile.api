@@ -1,0 +1,25 @@
+# Image API FastAPI — Adult Income
+# Build : docker build -f docker/Dockerfile.api -t adult-income-api .
+# Run   : docker run --rm -p 8000:8000 -v "$PWD/models:/app/models:ro" adult-income-api
+
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+WORKDIR /app
+
+# libgomp1 : runtime OpenMP requis pour deserialiser un modele LightGBM
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+COPY src/mlproject/ ./src/mlproject/
+
+RUN pip install --no-cache-dir \
+    fastapi "uvicorn[standard]" pydantic pandas numpy scikit-learn joblib \
+    lightgbm xgboost python-dotenv
+
+EXPOSE 8000
+
+CMD ["uvicorn", "mlproject.api:app", "--host", "0.0.0.0", "--port", "8000"]

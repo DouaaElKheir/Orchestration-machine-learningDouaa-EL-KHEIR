@@ -1,0 +1,28 @@
+FROM apache/airflow:2.10.0-python3.11
+
+ENV AIRFLOW__CORE__LOAD_EXAMPLES=False \
+    AIRFLOW__CORE__EXECUTOR=LocalExecutor \
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow \
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True \
+    PYTHONPATH=/opt/airflow/project/src:/opt/airflow/project/src/scripts \
+    MLFLOW_TRACKING_URI=http://mlflow:5000 \
+    API_URL=http://api:8000
+
+# Installer les dépendances Python nécessaires
+RUN pip install --no-cache-dir \
+    psycopg2-binary \
+    pandas \
+    numpy \
+    scikit-learn \
+    joblib \
+    lightgbm \
+    xgboost \
+    mlflow \
+    requests \
+    python-dotenv
+
+COPY dags /opt/airflow/dags
+COPY src /opt/airflow/project/src
+COPY pyproject.toml /opt/airflow/project/
+
+EXPOSE 8080

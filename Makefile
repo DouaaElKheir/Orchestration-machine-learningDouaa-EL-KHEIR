@@ -1,0 +1,180 @@
+# ==============================================================================
+# Projet Adult Income - Makefile
+# ==============================================================================
+# Dataset : Adult Census Income (classification binaire revenu >50K)
+# Environnement gere par uv (Python >=3.13) via pyproject.toml
+# Aide : make help
+# ==============================================================================
+
+SHELL        := /bin/sh
+PYTHON       := uv run python
+RUN          := uv run
+VENV_DIR     := .venv
+PYTHONPATH   ?= .
+export PYTHONPATH
+API_HOST     ?= 127.0.0.1
+API_PORT     ?= 8000
+FRONTEND_PORT ?= 8501
+MLFLOW_PORT  := 5000
+C            ?= 1.0
+MAX_ITER     ?= 1000
+CV           ?= 5
+SCORING      ?= roc_auc
+N_TRIALS     ?= 30
+
+# Couleurs ANSI
+YELLOW := $(shell printf '\033[33m')
+GREEN  := $(shell printf '\033[32m')
+RED    := $(shell printf '\033[31m')
+CYAN   := $(shell printf '\033[36m')
+RESET  := $(shell printf '\033[0m')
+
+.DEFAULT_GOAL := help
+
+.PHONY: help \
+        check-uv check-venv venv-create install sync deps-sync lock reset-env doctor \
+        data train train-sweep train-models train-optuna evaluate mlflow api frontend \
+        docker-build docker-run docker-up docker-down \
+        lint format type test check
+
+
+# ==============================================================================
+# Help
+# ==============================================================================
+
+help: ## Liste des commandes disponibles
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "$(CYAN)%-16s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+
+# ==============================================================================
+# Setup - Installation de l'environnement Python (uv + pyproject.toml) [FOURNI]
+# ==============================================================================
+
+check-uv:
+	@command -v uv >/dev/null 2>&1 || { \
+		echo "$(RED)[ERREUR] uv n'est pas installe$(RESET)"; \
+		echo "  Installation : https://docs.astral.sh/uv/"; \
+		exit 1; \
+	}
+
+check-venv:
+	@test -d $(VENV_DIR) || { \
+		echo "$(RED)[ERREUR] Virtualenv manquant : $(VENV_DIR)$(RESET)"; \
+		echo "  Lance : make install"; \
+		exit 1; \
+	}
+
+venv-create: check-uv ## Cree un virtualenv vide (.venv)
+	@echo "$(YELLOW)>> Creation du virtualenv...$(RESET)"
+	uv venv $(VENV_DIR)
+	@echo "$(GREEN)[OK] Virtualenv cree$(RESET)"
+
+deps-sync: check-uv ## Synchronise les dependances projet + dev (uv sync)
+	@echo "$(YELLOW)>> Synchronisation des dependances...$(RESET)"
+	uv sync --extra dev
+	@echo "$(GREEN)[OK] Dependances installees$(RESET)"
+
+install: deps-sync ## Cree le venv et installe le projet + dev (alias)
+
+sync: deps-sync ## Alias de deps-sync
+
+lock: check-uv ## Genere/actualise uv.lock depuis pyproject.toml
+	@echo "$(YELLOW)>> Generation du lockfile...$(RESET)"
+	uv lock
+	@echo "$(GREEN)[OK] uv.lock genere$(RESET)"
+
+reset-env: check-uv ## Reinitialise l'environnement (.venv + uv.lock)
+	@echo "$(YELLOW)>> Reinitialisation de l'environnement...$(RESET)"
+	rm -rf $(VENV_DIR) uv.lock
+	uv sync --extra dev
+	@echo "$(GREEN)[OK] Environnement recree$(RESET)"
+
+doctor: check-uv check-venv ## Diagnostique l'environnement de travail
+	@uv --version
+	@$(PYTHON) --version
+	@echo "$(GREEN)[OK] Environnement pret$(RESET)"
+
+
+# ==============================================================================
+# Pipeline ML  [A COMPLETER]
+# ==============================================================================
+
+data: ## Prepare le CSV Adult Income (adult.csv -> adult_prepared.csv)
+	$(PYTHON) scripts/prepare_data.py
+
+train: ## Entraine la baseline -> models/model.joblib (C=.. MAX_ITER=..)
+	$(PYTHON) -m mlproject.train --c $(C) --max-iter $(MAX_ITER)
+
+train-sweep: ## Lance 3 runs MLflow (c=0.1, 1.0, 10.0) pour comparer dans l'UI
+	$(PYTHON) -m mlproject.train --c 0.1
+	$(PYTHON) -m mlproject.train --c 1.0
+	$(PYTHON) -m mlproject.train --c 10.0
+
+train-models: ## Compare RF / XGBoost / LightGBM (GridSearchCV) + SHAP (CV=.. SCORING=..)
+	$(PYTHON) -m mlproject.train_models --cv $(CV) --scoring $(SCORING)
+
+train-optuna: ## Optimise RF / XGBoost / LightGBM avec Optuna (N_TRIALS=.. CV=..)
+	$(PYTHON) -m mlproject.train_optuna --n-trials $(N_TRIALS) --cv $(CV)
+
+evaluate: ## Evalue le dernier modele du registry avec porte qualite S11
+	$(PYTHON) -m mlproject.evaluate
+
+mlflow: ## Demarre le serveur MLflow (docker compose)
+	docker compose -f docker-compose.yml up -d mlflow
+
+api: ## Lance l'API FastAPI en rechargement auto (voir API_HOST/API_PORT)
+	$(RUN) uvicorn mlproject.api:app --reload --host $(API_HOST) --port $(API_PORT)
+
+frontend: ## Lance le frontend Streamlit (voir FRONTEND_PORT, API_URL)
+	API_URL=http://localhost:8000 $(RUN) streamlit run frontend/app.py --server.port $(FRONTEND_PORT)
+
+
+# ==============================================================================
+# Docker  [A COMPLETER]
+# ==============================================================================
+
+docker-build: ## Construit les images Docker de l'API et du frontend
+	docker compose -f docker-compose.yml build api frontend
+
+docker-run: ## Construit et lance l'API FastAPI et le frontend Streamlit
+	docker compose -f docker-compose.yml up -d --build api frontend
+
+docker-up: ## Demarre la stack Docker (api + frontend)
+	docker compose -f docker-compose.yml up -d --build api frontend
+
+workflow-docker: ## Alias pour demarrer la stack Docker de production
+	docker compose -f docker-compose.yml up -d --build api frontend
+
+docker-down: ## Arrete et supprime les conteneurs
+	docker compose -f docker-compose.yml down
+
+# ==============================================================================
+# Airflow
+# ==============================================================================
+
+airflow: ## Démarre Airflow via docker-compose.airflow.yml (si présent)
+	@if [ -f docker-compose.airflow.yml ]; then \
+		docker compose -f docker-compose.airflow.yml up -d; \
+		echo "$(GREEN)[OK] Airflow demarre$(RESET)"; \
+	else \
+		echo "$(RED)[ERREUR] Aucun fichier docker-compose.airflow.yml trouve. Ajoute la configuration Airflow ou place un fichier docker-compose.airflow.yml à la racine."; exit 1; \
+	fi
+
+
+# ==============================================================================
+# Qualite  [A COMPLETER]
+# ==============================================================================
+
+lint: ## Verifie le style (ruff)
+	# TODO : $(RUN) ruff check mlproject
+
+format: ## Formate le code (ruff)
+	# TODO : $(RUN) ruff format mlproject
+
+type: ## Verifie les types (mypy)
+	# TODO : $(RUN) mypy mlproject
+
+test: ## Lance les tests (pytest)
+	# TODO : $(RUN) pytest
+
+check: lint type test ## Workflow qualite complet (lint + types + tests)

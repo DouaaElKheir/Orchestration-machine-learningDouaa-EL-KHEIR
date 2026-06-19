@@ -1,0 +1,21 @@
+[2026-06-18T23:24:11.758+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-06-18T23:24:11.763+0000] {taskinstance.py:2603} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: model_retraining.prepare_data scheduled__2026-06-08T03:00:00+00:00 [queued]>
+[2026-06-18T23:24:11.765+0000] {taskinstance.py:2603} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: model_retraining.prepare_data scheduled__2026-06-08T03:00:00+00:00 [queued]>
+[2026-06-18T23:24:11.765+0000] {taskinstance.py:2856} INFO - Starting attempt 1 of 2
+[2026-06-18T23:24:11.771+0000] {taskinstance.py:2879} INFO - Executing <Task(PythonOperator): prepare_data> on 2026-06-08 03:00:00+00:00
+[2026-06-18T23:24:11.776+0000] {standard_task_runner.py:72} INFO - Started process 147 to run task
+[2026-06-18T23:24:11.779+0000] {standard_task_runner.py:104} INFO - Running: ['airflow', 'tasks', 'run', 'model_retraining', 'prepare_data', 'scheduled__2026-06-08T03:00:00+00:00', '--job-id', '3', '--raw', '--subdir', 'DAGS_FOLDER/retrain_dag.py', '--cfg-path', '/tmp/tmpp4fhqwbq']
+[2026-06-18T23:24:11.780+0000] {standard_task_runner.py:105} INFO - Job 3: Subtask prepare_data
+[2026-06-18T23:24:11.791+0000] {logging_mixin.py:190} WARNING - /home/airflow/.local/lib/python3.11/site-packages/airflow/settings.py:209 DeprecationWarning: The sql_alchemy_conn option in [core] has been moved to the sql_alchemy_conn option in [database] - the old setting has been used, but please update your config.
+[2026-06-18T23:24:11.804+0000] {task_command.py:467} INFO - Running <TaskInstance: model_retraining.prepare_data scheduled__2026-06-08T03:00:00+00:00 [running]> on host 608430fa1042
+[2026-06-18T23:24:11.805+0000] {logging_mixin.py:190} WARNING - /home/airflow/.local/lib/python3.11/site-packages/airflow/settings.py:449 DeprecationWarning: The sql_alchemy_conn option in [core] has been moved to the sql_alchemy_conn option in [database] - the old setting has been used, but please update your config.
+[2026-06-18T23:24:11.832+0000] {taskinstance.py:3122} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='douaa' AIRFLOW_CTX_DAG_ID='model_retraining' AIRFLOW_CTX_TASK_ID='prepare_data' AIRFLOW_CTX_EXECUTION_DATE='2026-06-08T03:00:00+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2026-06-08T03:00:00+00:00'
+[2026-06-18T23:24:11.832+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-06-18T23:24:13.615+0000] {logging_mixin.py:190} INFO - [OK] 32561 lignes ecrites -> /opt/airflow/project/data/adult_prepared.csv
+[2026-06-18T23:24:13.617+0000] {logging_mixin.py:190} INFO - [OK] Données préparées avec succès.
+[2026-06-18T23:24:13.617+0000] {python.py:240} INFO - Done. Returned value was: None
+[2026-06-18T23:24:13.623+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-06-18T23:24:13.623+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=model_retraining, task_id=prepare_data, run_id=scheduled__2026-06-08T03:00:00+00:00, execution_date=20260608T030000, start_date=20260618T232411, end_date=20260618T232413
+[2026-06-18T23:24:13.705+0000] {local_task_job_runner.py:261} INFO - Task exited with return code 0
+[2026-06-18T23:24:13.738+0000] {taskinstance.py:3891} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-06-18T23:24:13.740+0000] {local_task_job_runner.py:240} INFO - ::endgroup::
